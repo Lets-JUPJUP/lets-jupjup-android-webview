@@ -1,5 +1,6 @@
 package com.example.jupfront
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -22,6 +23,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // 저장된 토큰을 불러와서 확인
+        val sharedPreferences = applicationContext.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
+        val savedToken = sharedPreferences.getString("firebase_token", "")
+        Log.d("MainActivity", "Saved token: $savedToken")
 
         // WebView 초기화
         webView = findViewById(R.id.webview)
