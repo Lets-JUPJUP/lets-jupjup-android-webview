@@ -1,16 +1,19 @@
 package com.example.jupfront
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Message
 import android.util.Log
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import okhttp3.*;
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -23,6 +26,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var webViewLayout: FrameLayout
     private val client = OkHttpClient()
+    var mFilePathCallback: ValueCallback<Array<Uri>>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -182,6 +186,28 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        webView.webChromeClient = object : WebChromeClient() {
+            // For Android 5.0+
+            override fun onShowFileChooser(
+                webView: WebView?,
+                filePathCallback: ValueCallback<Array<Uri>>?,
+                fileChooserParams: FileChooserParams?
+            ): Boolean {
+                // Ensure that there's no existing callback
+                mFilePathCallback = filePathCallback
+
+                val intent = Intent(Intent.ACTION_GET_CONTENT)
+                intent.addCategory(Intent.CATEGORY_OPENABLE)
+                intent.setType("image/*")
+                // 파일 n개 선택 가능하도록 처리
+                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+
+                resultLauncher.launch(intent)
+                return true
+            }
+
+        }
+
         // 웹 페이지 로드
         webView.loadUrl("https://lets-jupjup.com")
         // 저장된 토큰을 불러와서 확인
@@ -191,6 +217,34 @@ class MainActivity : AppCompatActivity() {
         sendTokenToServer(savedToken);
 
     }
+
+    private val resultLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val resultCode = result.resultCode
+            val intent = result.data
+
+            if (resultCode == Activity.RESULT_OK) {
+                val clipData = intent?.clipData
+                val results = mutableListOf<Uri>()
+
+                if (clipData != null) {
+                    for (i in 0 until clipData.itemCount) {
+                        val item = clipData.getItemAt(i)
+                        results.add(item.uri)
+                    }
+                } else {
+                    intent?.data?.let { results.add(it) }
+                }
+
+                mFilePathCallback?.onReceiveValue(results.toTypedArray())
+            } else {
+                mFilePathCallback?.onReceiveValue(null)
+            }
+
+            mFilePathCallback = null
+        }
+
+
     private fun sendTokenToServer(token: String?) {
         // 토큰이 null이 아니라면 서버로 전송합니다.
         token?.let {
