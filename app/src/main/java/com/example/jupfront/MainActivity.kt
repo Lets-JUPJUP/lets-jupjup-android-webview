@@ -3,10 +3,12 @@ package com.example.jupfront
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Message
 import android.util.Log
+import android.webkit.GeolocationPermissions
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -19,6 +21,7 @@ import okhttp3.*;
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import java.io.IOException
 import java.net.URISyntaxException
+import android.Manifest
 
 
 class MainActivity : AppCompatActivity() {
@@ -215,6 +218,24 @@ class MainActivity : AppCompatActivity() {
         val savedToken = sharedPreferences.getString("firebase_token", "")
         Log.d("MainActivity", "Saved token: $savedToken")
         sendTokenToServer(savedToken);
+
+
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
+        }
+
+
+        //위치권한
+        webView.webChromeClient = object : WebChromeClient() {
+            // For Android 5.0+
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String?,
+                callback: GeolocationPermissions.Callback?
+            ) {
+                super.onGeolocationPermissionsShowPrompt(origin, callback)
+                callback?.invoke(origin,true, false)
+            }
+        }
 
     }
 
