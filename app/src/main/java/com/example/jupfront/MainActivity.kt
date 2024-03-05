@@ -19,6 +19,9 @@ import okhttp3.*;
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import java.io.IOException
 import java.net.URISyntaxException
+import android.webkit.CookieManager
+import com.example.jupfront.firebase.MyFirebaseMessagingService
+import com.example.jupfront.firebase.TokenSender
 
 
 class MainActivity : AppCompatActivity() {
@@ -31,6 +34,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        val intent = Intent(this, MyFirebaseMessagingService::class.java)
+        startService(intent)
 
         // WebView 초기화
         webView = findViewById(R.id.webview)
@@ -139,8 +144,6 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                // 나머지 서비스 로직 구현
-
 
                 Log.d("TAG", "return false")
                 return false
@@ -151,6 +154,11 @@ class MainActivity : AppCompatActivity() {
 
             override fun shouldOverrideUrlLoading(view: WebView,request: WebResourceRequest): Boolean {
                 Log.d("TAG", request.url.toString())
+                var accessToken: String? = null
+                var flag = false;
+                if (request.url.toString().startsWith("https://lets-jupjup.com/kakao-login")) {
+                    flag = true
+                }
 
                 if (request.url.scheme == "intent") {
                     try {
@@ -182,6 +190,21 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 // 나머지 서비스 로직 구현
+                // 카카오 로그인이 성공한 경우
+                if (flag) {
+                    // firebase 토큰과 access Token 전송
+                    accessToken = Uri.parse(request.url.toString()).getQueryParameter("accessToken")
+                    val shredPref = applicationContext.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
+                    with(shredPref.edit()) {
+                        putString("access_token", accessToken)
+                        apply()
+                    }
+                    val sharedPreferences = applicationContext.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
+                    val savedToken = sharedPreferences.getString("firebase_token", "")
+                    Log.d("SavedFCMToken", savedToken.toString());
+                    TokenSender().sendTokenToServer(applicationContext, savedToken, accessToken)
+                }
+
                 return false
             }
         }
@@ -210,11 +233,7 @@ class MainActivity : AppCompatActivity() {
 
         // 웹 페이지 로드
         webView.loadUrl("https://lets-jupjup.com")
-        // 저장된 토큰을 불러와서 확인
-        val sharedPreferences = applicationContext.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
-        val savedToken = sharedPreferences.getString("firebase_token", "")
-        Log.d("MainActivity", "Saved token: $savedToken")
-        sendTokenToServer(savedToken);
+
 
     }
 
@@ -243,34 +262,4 @@ class MainActivity : AppCompatActivity() {
 
             mFilePathCallback = null
         }
-
-
-    private fun sendTokenToServer(token: String?) {
-        // 토큰이 null이 아니라면 서버로 전송합니다.
-        token?.let {
-            val json = "{\"token\":\"$it\"}" // JSON 형식의 데이터 생성
-            val requestBody = RequestBody.create("application/json".toMediaTypeOrNull(), json)
-
-            val request = Request.Builder()
-                .url("http://10.0.2.2:8080/api/v1/notifications/test")
-                .post(requestBody)
-                .build()
-
-            client.newCall(request).enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    Log.e("MainActivity", "Failed to send token: ${e.message}")
-                }
-
-                override fun onResponse(call: Call, response: Response) {
-                    // 서버로부터 응답을 받았을 때 처리할 로직을 작성합니다.
-                    // 예를 들어, 응답이 성공적으로 왔는지 확인하고 적절한 동작을 수행할 수 있습니다.
-                    if (response.isSuccessful) {
-                        Log.d("MainActivity", "Token sent successfully")
-                    } else {
-                        Log.e("MainActivity", "Failed to send token: ${response.code}")
-                    }
-                }
-            })
-        }
-    }
 }
