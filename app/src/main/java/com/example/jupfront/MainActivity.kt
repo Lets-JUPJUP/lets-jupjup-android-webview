@@ -3,10 +3,12 @@ package com.example.jupfront
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Message
 import android.util.Log
+import android.webkit.GeolocationPermissions
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -22,6 +24,7 @@ import java.net.URISyntaxException
 import android.webkit.CookieManager
 import com.example.jupfront.firebase.MyFirebaseMessagingService
 import com.example.jupfront.firebase.TokenSender
+import android.Manifest
 
 
 class MainActivity : AppCompatActivity() {
@@ -234,6 +237,23 @@ class MainActivity : AppCompatActivity() {
         // 웹 페이지 로드
         webView.loadUrl("https://lets-jupjup.com")
 
+
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
+        }
+
+
+        //위치권한
+        webView.webChromeClient = object : WebChromeClient() {
+            // For Android 5.0+
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String?,
+                callback: GeolocationPermissions.Callback?
+            ) {
+                super.onGeolocationPermissionsShowPrompt(origin, callback)
+                callback?.invoke(origin,true, false)
+            }
+        }
 
     }
 
